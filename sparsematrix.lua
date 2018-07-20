@@ -1,6 +1,6 @@
 --[[
 
- sparsematrix - v0.0.1 - public domain Lua tiny sparse matrix library
+ sparsematrix - v0.0.2 - public domain Lua tiny sparse matrix library
  no warranty implied; use at your own risk
 
  author: Ilya Kolbin (iskolbin@gmail.com)
@@ -33,8 +33,8 @@ function SparseMatrix:set( x, y, v )
 	return self
 end
 
-function SparseMatrix:get( x, y )
-	return self[x * 67108864 + y] or 0
+function SparseMatrix:get( x, y, default )
+	return self[x * 67108864 + y] or default
 end
 
 function SparseMatrix:next( prevk )
