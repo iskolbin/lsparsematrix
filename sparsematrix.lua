@@ -1,6 +1,6 @@
 --[[
 
- sparsematrix - v0.0.3 - public domain Lua tiny sparse matrix library
+ sparsematrix - v0.1.0 - public domain Lua sparse matrix library
  no warranty implied; use at your own risk
 
  author: Ilya Kolbin (iskolbin@gmail.com)
@@ -10,7 +10,7 @@
 
  COMPATIBILITY
 
- Lua 5.1, 5.2, 5.3, LuaJIT
+ Lua 5.1+, LuaJIT
 
  LICENSE
 
@@ -18,34 +18,88 @@
 
 --]]
 
-local setmetatable, next, floor, ceil, fmod = setmetatable, next, math.floor, math.ceil, math.fmod
+local setmetatable, next, floor = _G.setmetatable, _G.next, math.floor
 
 local SparseMatrix = {}
 
 SparseMatrix.__index = SparseMatrix
 
-function SparseMatrix.new()
-	return setmetatable( {}, SparseMatrix )
+function SparseMatrix.make(xyvs)
+	local m, mset = {}, SparseMatrix.set
+	if xyvs then
+		for i = 1, #xyvs, 3 do
+			mset(m, xyvs[i], xyvs[i+1], xyvs[i+2])
+		end
+	end
+	return m
 end
 
-function SparseMatrix:set( x, y, v )
-	self[x * 67108864 + y] = v
+function SparseMatrix.new(xyvs)
+	return setmetatable(SparseMatrix.make(xyvs), SparseMatrix)
+end
+
+if math.maxinteger and math.maxinteger >= 9223372036854775807 then
+
+function SparseMatrix:set(x, y, v)
+	if y < 0 then
+		y = 4294967296 + y
+	end
+	self[x*4294967296 + y] = v
 	return self
 end
 
-function SparseMatrix:get( x, y, default )
-	return self[x * 67108864 + y] or default
+function SparseMatrix:get(x, y, default)
+	if y < 0 then
+		y = 4294967296 + y
+	end
+	return self[x*4294967296 + y] or default
 end
 
-function SparseMatrix:next( prevk )
-	local k, v = next( self, prevk )
-	if k then
-		if k >= 0 then
-			return k, floor( k / 67108864 ), fmod( k, 67108864 ), v
-		else
-			return k, ceil( k / 67108864 ), fmod( k, 67108864 ), v
-		end
+load([[return function(SparseMatrix)
+function SparseMatrix:next(prevk)
+	local k, v = next(self, prevk)
+	if not k then
+		return
 	end
+	local x = k//4294967296
+	local y = k - x*4294967296
+	if y > 2147483648 then
+		y = y - 4294967296
+	end
+	return k, x, y, v
+end
+end]])()(SparseMatrix)
+
+else
+
+function SparseMatrix:set(x, y, v)
+	if y < 0 then
+		y = 67108864 + y
+	end
+	self[x*67108864 + y] = v
+	return self
+end
+
+function SparseMatrix:get(x, y, default)
+	if y < 0 then
+		y = 67108864 + y
+	end
+	return self[x*67108864 + y] or default
+end
+
+function SparseMatrix:next(prevk)
+	local k, v = next(self, prevk)
+	if not k then
+		return
+	end
+	local x = floor(k/67108864)
+	local y = k - x*67108864
+	if y > 33554432 then
+		y = y - 67108864
+	end
+	return k, x, y, v
+end
+
 end
 
 function SparseMatrix:iter()
